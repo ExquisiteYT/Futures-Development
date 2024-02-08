@@ -1,0 +1,85 @@
+// Code is now deprecated since Version 2 and 3 of Pinescript
+// I've tried to update the code from Version 2 & 3 to V5 of PineScript, but it no longer works
+
+//@version=5
+//strategy("ema strategy testing", overlay=true, margin_long=100, margin_short=100)
+strategy('ema strategy testing', overlay=true)
+
+period = input.string(defval='FQ', title='Period', options=['FQ', 'FY'])
+//fcf = financial(syminfo.tickerid, "FREE_CASH_FLOW", period)
+
+sym = input.symbol('BLS:UNRATE', 'unemployment rate')
+src = input(close, 'Plot source')
+unemploymentRate = request.security(sym, timeframe.period, src)
+plot(unemploymentRate, "Lagged", color.yellow)
+unemploymentRateIndicator = unemploymentRate < 6
+
+rsiSource = input(title='RSI Source', defval=close)
+rsiLength = input(title='RSI length', defval=14)
+rsiOverBought = input(title='RSI Overbought level', defval=70)
+rsiOverSold = input(title='RSI OverSold level', defval=30)
+risValue = ta.rsi(rsiSource, rsiLength)
+isRsiOB = risValue >= rsiOverBought
+isRsiOS = risValue <= rsiOverSold
+
+//free cash flow > 1 billion
+fcf = request.financial(syminfo.tickerid, 'FREE_CASH_FLOW', 'FQ')
+isFcfPositive = fcf > 1000000000
+
+//price to free cash flow smaller than 9
+priceToFreeCashFlowRatio = close / fcf
+priceFcfIndicator = priceToFreeCashFlowRatio < 9
+
+ema20 = ta.ema(close, 20)
+ema100 = ta.ema(close, 100)
+
+//long = ema20 > ema100
+//short = ema20 < ema100
+short = ema20 > ema100
+long = ema20 < ema100
+
+longcondition = long  //and long[10] //and not long[11]
+shortcondition = short  //and short [10] //and not short[11]
+
+closelong = ema20 < ema100 and not long[9]
+closeshort = ema20 > ema100 and not short[9]
+
+plot(ema20, color=color.new(#311B92, 0), linewidth=2)
+plot(ema100, color=color.new(#FF5252, 0), linewidth=2)
+//plot(unemploymentRate, color=color.green, linewidth=3)
+
+start = timestamp(2020, 1, 1, 0, 0)
+end = timestamp(2024, 1, 1, 0, 0)
+
+if time >= start and time <= end and isRsiOS and priceFcfIndicator
+    strategy.entry(id = 'Long', direction = strategy.long, when=longcondition)
+
+if time >= start and time <= end and isRsiOB and not priceFcfIndicator
+    strategy.entry(id = 'Short', direction = strategy.short, when=shortcondition)
+    //strategy.entry("Long", strategy.long and isRsiOS and priceFcfIndicator and unemploymentRateIndicator, 1000.0, when = longcondition)
+    //strategy.entry("Short", strategy.short and isRsiOB and not priceFcfIndicator and not unemploymentRateIndicator, 1000.0, when = shortcondition)
+    //strategy.entry("Long", strategy.long and isRsiOS and isFcfPositive, 1000.0, when = longcondition)
+    //strategy.entry("Short", strategy.short and isRsiOB and isFcfPositive, 1000.0, when = shortcondition)
+    //strategy.entry("Long", strategy.long , 1000.0, when = longcondition)
+    //strategy.entry("Short", strategy.short , 1000.0, when = shortcondition)
+
+
+strategy.close('Long', when=closeshort)
+strategy.close('Short', when=closelong)
+
+// END of First Script
+// This script is to work in conjunction with another script, below: 
+
+//@version=5
+indicator('Additional Script', overlay=false)
+period = input(defval='FQ', title='Period')
+
+sym = input.symbol('BLS:UNRATE', 'unemployment rate')
+src = input(close, 'Plot source')
+sym_src = request.security(sym, timeframe.period, src)
+plot(sym_src, 'Lagged', color.new(color.yellow, 0))
+//unemploymentRate = request.financial(syminfo.tickerid, "FRED:", period)
+//unemploymentRateIndicator = unemploymentRate < 6
+
+//plot(unemploymentRate, color=color.green, linewidth=3)
+
